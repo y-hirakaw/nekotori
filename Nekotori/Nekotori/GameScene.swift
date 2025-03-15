@@ -40,23 +40,24 @@ class GameScene: SKScene {
         let gridWidth = 8
         let gridHeight = 12
         
-        // スクリーンサイズに応じてタイルサイズを調整（上下のUIスペースを考慮）
-        let verticalUISpace = size.height * 0.2 // 画面の20%をUI用に確保
+        // 画面の上下にUIスペースを確保
+        let topUISpace = size.height * 0.15    // 画面上部15%をUI用に
+        let bottomUISpace = size.height * 0.15  // 画面下部15%をUI用に
+        let availableHeight = size.height - (topUISpace + bottomUISpace)
+        
+        // 利用可能な幅と高さから最適なタイルサイズを計算
         let maxTileWidth = size.width / CGFloat(gridWidth)
-        let maxTileHeight = (size.height - verticalUISpace) / CGFloat(gridHeight)
+        let maxTileHeight = availableHeight / CGFloat(gridHeight)
         let tileLength = min(maxTileWidth, maxTileHeight)
         tileSize = CGSize(width: tileLength, height: tileLength)
         
-        // フィールド全体の大きさを計算
+        // フィールド全体のサイズを計算
         let fieldWidth = tileSize.width * CGFloat(gridWidth)
         let fieldHeight = tileSize.height * CGFloat(gridHeight)
         
-        // フィールドの開始位置を計算
-        // 水平方向は中央
+        // フィールドの開始位置を計算（水平・垂直方向とも中央に配置）
         let startX = (size.width - fieldWidth) / 2
-        // 垂直方向は、上部UI用のスペースを確保して配置
-        let topUISpace = size.height * 0.12 // 画面上部12%をUI用に
-        let startY = ((size.height - topUISpace) - fieldHeight) / 2
+        let startY = bottomUISpace + (availableHeight - fieldHeight) / 2
         
         // タイルを配置
         for y in 0..<gridHeight {
@@ -69,12 +70,9 @@ class GameScene: SKScene {
                 let tile = TileNode(gridPosition: (x: x, y: y), size: tileSize)
                 tile.position = tilePosition
                 
-                // 特定のタイルを初期プレイヤー領域または敵領域に設定
                 if y < 2 {
-                    // 下部2行はプレイヤーの初期領域
                     tile.progressCapture(amount: 1.0, newOwner: .player)
                 } else if y >= gridHeight - 2 {
-                    // 上部2行は敵の初期領域
                     tile.progressCapture(amount: 1.0, newOwner: .enemy)
                 }
                 
@@ -86,27 +84,29 @@ class GameScene: SKScene {
     
     /// UIをセットアップ
     private func setupUI() {
-        // 餌の量を表示するUI
+        // 餌の量を表示するUI - 上部に配置
         let foodIconTexture = SKTexture(imageNamed: "cat_food")
         let foodIcon = SKSpriteNode(texture: foodIconTexture, size: CGSize(width: 30, height: 30))
-        foodIcon.position = CGPoint(x: size.width * 0.08, y: size.height * 0.95)
+        foodIcon.position = CGPoint(x: size.width * 0.1, y: size.height * 0.92)
         addChild(foodIcon)
 
         foodLabel = SKLabelNode(text: "\(GameManager.shared.foodAmount)")
         foodLabel.fontColor = SKColor.white
         foodLabel.fontSize = 24
-        foodLabel.position = CGPoint(x: size.width * 0.15, y: size.height * 0.95)
+        foodLabel.horizontalAlignmentMode = .left
+        foodLabel.verticalAlignmentMode = .center
+        foodLabel.position = CGPoint(x: size.width * 0.15, y: size.height * 0.92)
         addChild(foodLabel)
         
-        // 猫タイプセレクターの位置を計算（下部に配置）
-        let selectorY = size.height * 0.08
-        let buttonSpacing = size.width * 0.2
-        let startX = (size.width - buttonSpacing * CGFloat(CatType.allCases.count - 1)) / 2
+        // 猫タイプセレクター - 下部に配置
+        let selectorY = size.height * 0.07
+        let buttonWidth = size.width / 5  // 画面幅の1/5をボタン間の間隔とする
+        let startX = buttonWidth  // 左端から1/5の位置から開始
         
         // 猫タイプセレクターを作成
         for (index, catType) in CatType.allCases.enumerated() {
             let button = createCatTypeButton(for: catType)
-            let xPos = startX + CGFloat(index) * buttonSpacing
+            let xPos = startX + CGFloat(index) * buttonWidth
             button.position = CGPoint(x: xPos, y: selectorY)
             catTypeButtons[catType] = button
             addChild(button)
@@ -121,7 +121,7 @@ class GameScene: SKScene {
         let container = SKNode()
         
         // ボタンの背景
-        let background = SKShapeNode(circleOfRadius: 35)
+        let background = SKShapeNode(circleOfRadius: 30) // サイズを少し小さく
         background.fillColor = .gray
         background.strokeColor = .lightGray
         background.name = "button_\(catType.rawValue)"
@@ -139,18 +139,18 @@ class GameScene: SKScene {
         }
         
         let catTexture = SKTexture(imageNamed: catImageName)
-        let catSprite = SKSpriteNode(texture: catTexture, size: CGSize(width: 50, height: 50))
+        let catSprite = SKSpriteNode(texture: catTexture, size: CGSize(width: 40, height: 40)) // サイズを少し小さく
         container.addChild(catSprite)
 
         // コスト表示
-        let costIcon = SKSpriteNode(texture: SKTexture(imageNamed: "cat_food"), size: CGSize(width: 20, height: 20))
-        costIcon.position = CGPoint(x: -15, y: -45)
+        let costIcon = SKSpriteNode(texture: SKTexture(imageNamed: "cat_food"), size: CGSize(width: 15, height: 15))
+        costIcon.position = CGPoint(x: -12, y: -35)
         container.addChild(costIcon)
         
         let costLabel = SKLabelNode(text: "\(catType.summonCost)")
-        costLabel.fontSize = 18
+        costLabel.fontSize = 15
         costLabel.fontColor = .yellow
-        costLabel.position = CGPoint(x: 15, y: -50)
+        costLabel.position = CGPoint(x: 12, y: -40)
         container.addChild(costLabel)
         
         return container
