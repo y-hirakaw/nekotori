@@ -12,6 +12,9 @@ class GameManager {
     /// 餌の増加速度（1秒間に増える量）
     private(set) var foodIncreaseRate: Double = 1.0
     
+    /// 餌の小数点以下の蓄積値
+    private var accumulatedFood: Double = 0.0
+    
     /// プレイヤーの猫リスト
     private(set) var playerCats: [CatNode] = []
     
@@ -33,6 +36,7 @@ class GameManager {
     func resetGame() {
         foodAmount = 30
         foodIncreaseRate = 1.0
+        accumulatedFood = 0.0
         playerCats = []
         enemyCats = []
         grid = []
@@ -72,7 +76,8 @@ class GameManager {
         }
         
         // 基本の増加速度 + 所有タイル数に応じたボーナス
-        foodIncreaseRate = 1.0 + Double(playerTilesCount) * 0.2
+        // 基本速度を0.3に下げ、タイルごとのボーナスも0.05に調整
+        foodIncreaseRate = 0.3 + Double(playerTilesCount) * 0.05
     }
     
     /// 猫を召喚する
@@ -173,8 +178,16 @@ class GameManager {
     /// ゲームの更新処理
     /// - Parameter deltaTime: 経過時間
     func update(deltaTime: TimeInterval) {
-        // 餌の自動増加
-        foodAmount += Int(foodIncreaseRate * deltaTime)
+        // 餌の自動増加（小数点以下を蓄積）
+        // deltaTimeは秒単位なので、60で割って増加速度を1分あたりの値として扱う
+        accumulatedFood += (foodIncreaseRate * deltaTime) / 60.0
+        
+        // 整数部分を餌の量に加算
+        let integerPart = Int(accumulatedFood)
+        if integerPart > 0 {
+            foodAmount += integerPart
+            accumulatedFood -= Double(integerPart)
+        }
         
         // 勝利条件チェック
         if checkPlayerWinCondition() {
