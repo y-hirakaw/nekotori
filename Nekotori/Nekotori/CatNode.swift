@@ -45,19 +45,31 @@ class CatNode: SKSpriteNode {
         self.catType = catType
         self.owner = owner
         
-        // 猫の種類と所有者に応じた色を設定
+        // 猫の画像を設定
+        let catImageName: String
+        switch catType {
+        case .normal:
+            catImageName = "cat1"
+        case .attack:
+            catImageName = "cat2"
+        case .collector:
+            catImageName = "cat3"
+        }
+        
+        let texture = SKTexture(imageNamed: catImageName)
+        
+        // 所有者に応じた色を設定
         let color: UIColor
         switch owner {
         case .player:
-            color = .blue
+            color = .white // プレイヤーの猫は通常色
         case .enemy:
-            color = .red
+            color = .red // 敵の猫は赤みがかった色
         default:
             color = .gray
         }
         
-        super.init(texture: nil, color: color, size: size)
-        
+        super.init(texture: texture, color: color, size: size)
         setupCat()
     }
     
@@ -67,19 +79,28 @@ class CatNode: SKSpriteNode {
     
     /// 猫の初期設定
     private func setupCat() {
-        // 猫の形を楕円で表現
-        let catShape = SKShapeNode(ellipseOf: CGSize(width: size.width * 0.8, height: size.height * 0.8))
-        catShape.fillColor = color
-        catShape.strokeColor = .black
-        catShape.lineWidth = 1.0
-        addChild(catShape)
+        // 猫の画像を設定
+        let catImageName: String
+        switch catType {
+        case .normal:
+            catImageName = "cat1"
+        case .attack:
+            catImageName = "cat2"
+        case .collector:
+            catImageName = "cat3"
+        }
         
-        // 猫の種類を表すラベル
-        let typeLabel = SKLabelNode(text: catType.displayName.prefix(1).uppercased())
-        typeLabel.fontSize = 14
-        typeLabel.fontColor = .white
-        typeLabel.verticalAlignmentMode = .center
-        addChild(typeLabel)
+        texture = SKTexture(imageNamed: catImageName)
+        
+        // 所有者に応じて色合いを調整
+        switch owner {
+        case .player:
+            color = .white // プレイヤーの猫は通常色
+        case .enemy:
+            color = .red // 敵の猫は赤みがかった色
+        default:
+            color = .gray
+        }
         
         // 行動モードを示す目印
         updateModeIndicator()

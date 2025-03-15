@@ -86,11 +86,16 @@ class GameScene: SKScene {
     
     /// UIをセットアップ
     private func setupUI() {
-        // 餌の量を表示するラベル
-        foodLabel = SKLabelNode(text: "餌: \(GameManager.shared.foodAmount)")
+        // 餌の量を表示するUI
+        let foodIconTexture = SKTexture(imageNamed: "cat_food")
+        let foodIcon = SKSpriteNode(texture: foodIconTexture, size: CGSize(width: 30, height: 30))
+        foodIcon.position = CGPoint(x: size.width * 0.08, y: size.height * 0.95)
+        addChild(foodIcon)
+
+        foodLabel = SKLabelNode(text: "\(GameManager.shared.foodAmount)")
         foodLabel.fontColor = SKColor.white
         foodLabel.fontSize = 24
-        foodLabel.position = CGPoint(x: size.width * 0.1, y: size.height * 0.95)
+        foodLabel.position = CGPoint(x: size.width * 0.15, y: size.height * 0.95)
         addChild(foodLabel)
         
         // 猫タイプセレクターの位置を計算（下部に配置）
@@ -122,18 +127,30 @@ class GameScene: SKScene {
         background.name = "button_\(catType.rawValue)"
         container.addChild(background)
         
-        // 猫タイプの表示
-        let label = SKLabelNode(text: catType.displayName.prefix(1).uppercased())
-        label.fontSize = 24
-        label.fontColor = .white
-        label.verticalAlignmentMode = .center
-        container.addChild(label)
+        // 猫のイメージを表示
+        let catImageName: String
+        switch catType {
+        case .normal:
+            catImageName = "cat1"
+        case .attack:
+            catImageName = "cat2"
+        case .collector:
+            catImageName = "cat3"
+        }
         
+        let catTexture = SKTexture(imageNamed: catImageName)
+        let catSprite = SKSpriteNode(texture: catTexture, size: CGSize(width: 50, height: 50))
+        container.addChild(catSprite)
+
         // コスト表示
+        let costIcon = SKSpriteNode(texture: SKTexture(imageNamed: "cat_food"), size: CGSize(width: 20, height: 20))
+        costIcon.position = CGPoint(x: -15, y: -45)
+        container.addChild(costIcon)
+        
         let costLabel = SKLabelNode(text: "\(catType.summonCost)")
         costLabel.fontSize = 18
         costLabel.fontColor = .yellow
-        costLabel.position = CGPoint(x: 0, y: -45)
+        costLabel.position = CGPoint(x: 15, y: -50)
         container.addChild(costLabel)
         
         return container
