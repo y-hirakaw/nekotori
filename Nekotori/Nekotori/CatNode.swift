@@ -185,12 +185,22 @@ class CatNode: SKSpriteNode {
             switch currentMode {
             case .collect:
                 // 餌集めのアニメーション表現などを行う
-                break
+                if progressPercent >= 1.0 {
+                    // 餌の収集完了
+                    GameManager.shared.addFood(amount: Int(catType.collectPower))
+                    actionProgress = 0
+                }
                 
             case .attack:
                 // 陣地の占領を進める
+                // 占領の進行度を猫の種類に応じて調整
+                let captureAmount = (deltaTime / actionDuration) * catType.attackPower
                 if owner != .neutral {
-                    targetTile.progressCapture(amount: progressPercent * 0.05, newOwner: owner)
+                    let captureComplete = targetTile.progressCapture(amount: CGFloat(captureAmount), newOwner: owner)
+                    if captureComplete {
+                        // 占領完了したら進行度をリセット
+                        actionProgress = 0
+                    }
                 }
             }
         }

@@ -156,25 +156,37 @@ class EnemyAI {
         cat.moveToTile(randomTile)
     }
     
+    /// AIの難易度に応じた攻撃確率を返す
+    private var attackProbability: Double {
+        switch difficulty {
+        case .easy: return 0.3    // 30%の確率で攻撃
+        case .normal: return 0.5   // 50%の確率で攻撃
+        case .hard: return 0.7     // 70%の確率で攻撃
+        }
+    }
+    
     /// 普通の難易度の猫の行動
     /// - Parameter cat: 行動を決定する猫
     private func normalBehavior(for cat: CatNode) {
-        // 猫の行動モードに応じて目的地を選択
-        switch cat.currentMode {
-        case .collect:
-            // 餌を集めるなら敵の陣地か中立地帯を選択
-            if let tile = findPreferredTileForCollection() {
+        // 攻撃型の猫は攻撃を優先
+        if cat.catType == .attack {
+            cat.currentMode = .attack
+            if let tile = findBestTileToAttack() {
+                cat.moveToTile(tile)
+                return
+            }
+        }
+        
+        // ランダムで行動を決定（難易度に応じた確率で攻撃）
+        if Double.random(in: 0...1) < attackProbability {
+            cat.currentMode = .attack
+            if let tile = findBestTileToAttack() {
                 cat.moveToTile(tile)
             }
-        case .attack:
-            // 攻撃するならプレイヤーの陣地を選択
-            if let tile = findPlayerOwnedTile() {
+        } else {
+            cat.currentMode = .collect
+            if let tile = findPreferredTileForCollection() {
                 cat.moveToTile(tile)
-            } else {
-                // プレイヤーの陣地がない場合は中立地帯を選択
-                if let tile = findNeutralTile() {
-                    cat.moveToTile(tile)
-                }
             }
         }
     }
@@ -182,37 +194,58 @@ class EnemyAI {
     /// 難しい難易度の猫の行動（戦略的）
     /// - Parameter cat: 行動を決定する猫
     private func strategicBehavior(for cat: CatNode) {
-        // 猫の種類と行動モードに応じて戦略的に動く
-        
         switch cat.catType {
         case .normal:
-            // バランス型はバランス良く行動
-            if Double.random(in: 0...1) < 0.5 {
-                cat.currentMode = .collect
-                if let tile = findPreferredTileForCollection() {
-                    cat.moveToTile(tile)
-                }
-            } else {
+            // バランス型は状況に応じて行動を決定
+            // プレイヤーの陣地が多い場合は攻撃を優先
+            if shouldPrioritizeAttack() {
                 cat.currentMode = .attack
                 if let tile = findBestTileToAttack() {
                     cat.moveToTile(tile)
                 }
+            } else {
+                normalBehavior(for: cat)
             }
             
         case .attack:
-            // 攻撃型は攻撃を優先
+            // 攻撃型は常に攻撃優先
             cat.currentMode = .attack
             if let tile = findBestTileToAttack() {
                 cat.moveToTile(tile)
             }
             
         case .collector:
-            // 収集型は収集を優先
-            cat.currentMode = .collect
-            if let tile = findPreferredTileForCollection() {
-                cat.moveToTile(tile)
+            // 収集型は餌が少ない時は収集、多い時は攻撃
+            if foodAmount < 20 {
+                cat.currentMode = .collect
+                if let tile = findPreferredTileForCollection() {
+                    cat.moveToTile(tile)
+                }
+            } else {
+                normalBehavior(for: cat)
             }
         }
+    }
+    
+    /// プレイヤーの陣地が多く、攻撃を優先すべきかどうか判定
+    private func shouldPrioritizeAttack() -> Bool {
+        var playerTiles = 0
+        var enemyTiles = 0
+        var totalTiles = 0
+        
+        for row in GameManager.shared.grid {
+            for tile in row {
+                totalTiles += 1
+                if tile.owner == .player {
+                    playerTiles += 1
+                } else if tile.owner == .enemy {
+                    enemyTiles += 1
+                }
+            }
+        }
+        
+        // プレイヤーの陣地が30%以上なら攻撃優先
+        return Double(playerTiles) / Double(totalTiles) > 0.3
     }
     
     /// ランダムなタイルを取得
@@ -302,45 +335,43 @@ class EnemyAI {
         let grid = GameManager.shared.grid
         
         // プレイヤーの陣地に隣接するタイル優先度リスト
-        var priorityTiles: [TileNode] = []
+        var priorityTiles: [(tile: TileNode, priority: Int)] = []
         
-        // プレイヤータイルに隣接する敵または中立タイルを探す
         for y in 0..<grid.count {
             for x in 0..<grid[y].count {
                 let tile = grid[y][x]
                 
-                // 自分の陣地は対象外
-                if tile.owner == .enemy {
-                    continue
-                }
-                
-                // 隣接するタイルをチェック
-                let adjacentPositions = [
-                    (x: x+1, y: y),
-                    (x: x-1, y: y),
-                    (x: x, y: y+1),
-                    (x: x, y: y-1)
-                ]
-                
-                for adjPos in adjacentPositions {
-                    if adjPos.y >= 0 && adjPos.y < grid.count &&
-                        adjPos.x >= 0 && adjPos.x < grid[adjPos.y].count {
-                        let adjTile = grid[adjPos.y][adjPos.x]
-                        if adjTile.owner == .player {
-                            priorityTiles.append(tile)
-                            break
+                // プレイヤーの陣地を対象とする
+                if tile.owner == .player {
+                    var priority = 1
+                    
+                    // 隣接するタイルをチェック
+                    let adjacentPositions = [
+                        (x: x+1, y: y),
+                        (x: x-1, y: y),
+                        (x: x, y: y+1),
+                        (x: x, y: y-1)
+                    ]
+                    
+                    // 隣接する敵の陣地が多いほど優先度を上げる
+                    for adjPos in adjacentPositions {
+                        if adjPos.y >= 0 && adjPos.y < grid.count &&
+                            adjPos.x >= 0 && adjPos.x < grid[adjPos.y].count {
+                            if grid[adjPos.y][adjPos.x].owner == .enemy {
+                                priority += 1
+                            }
                         }
                     }
+                    
+                    priorityTiles.append((tile: tile, priority: priority))
                 }
             }
         }
         
-        // 優先度の高いタイルがあればそれを返す
-        if let priorityTile = priorityTiles.randomElement() {
-            return priorityTile
-        }
+        // 優先度でソート
+        priorityTiles.sort { $0.priority > $1.priority }
         
-        // なければプレイヤーのタイルをランダムに返す
-        return findPlayerOwnedTile()
+        // 最も優先度の高いタイルを返す
+        return priorityTiles.first?.tile ?? findPlayerOwnedTile()
     }
 }
